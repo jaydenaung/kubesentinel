@@ -228,29 +228,37 @@ finish
 
 ---
 
-## Latest Release — v1.1.0
+## Latest Release — v1.2.0
 
-> **KubeSentinel v1.1.0 is available as a signed container image on Docker Hub and GHCR.**
+> **KubeSentinel v1.2.0 is available as a signed container image on Docker Hub and GHCR, and as a pip package on PyPI.**
 
 | | |
 |---|---|
-| **Docker Hub** | [`jaydenaung17/kubesentinel:v1.1.0`](https://hub.docker.com/r/jaydenaung17/kubesentinel) |
-| **GHCR** | `ghcr.io/jaydenaung/kubesentinel:v1.1.0` |
+| **PyPI** | [`pip install kubesentinel`](https://pypi.org/project/kubesentinel/) |
+| **Docker Hub** | [`jaydenaung17/kubesentinel:v1.2.0`](https://hub.docker.com/r/jaydenaung17/kubesentinel) |
+| **GHCR** | `ghcr.io/jaydenaung/kubesentinel:v1.2.0` |
 | **Platforms** | `linux/amd64` · `linux/arm64` (Apple Silicon native) |
 | **Image signing** | cosign keyless (sigstore) — verifiable supply chain |
 | **Bundled tools** | kubectl · trivy · helm — no separate installation required |
 
+**What's new in v1.2.0:**
+- **kubectl plugin** — `pip install kubesentinel` → `kubectl sentinel scan`; no API key required; works on any cluster
+- **SARIF output** — `kubectl sentinel scan --output sarif` uploads findings to GitHub Advanced Security
+- **CI/CD gate** — `kubectl sentinel scan --fail-on CRITICAL` exits 1; drop into any pipeline
+- **Scan diff** — compare any two scans of the same target; new/fixed/worsened/unchanged findings; baseline picker
+- **Compound risk in the terminal** — exploit chains surface without a web server
+
 **What's new in v1.1.0:**
-- **24 static checks** (up from 14) — AppArmor, allowPrivilegeEscalation, SSH port exposure, Ingress TLS, LoadBalancer exposure, image digest pinning, capability drop, and more
+- **24 static checks** — AppArmor, allowPrivilegeEscalation, SSH port exposure, Ingress TLS, LoadBalancer exposure, image digest pinning, capability drop, and more
 - **Live reasoning feed** — SSE-based real-time tool call stream; watch the AI agent reason during every scan
-- **SIEM webhook** — POST scan results to Elastic, Splunk HEC, Datadog, or any HTTP endpoint; configurable from the Settings UI
-- **One-click Render deploy** — deploy KubeSentinel in 3 minutes, no Python setup required
+- **SIEM webhook** — POST scan results to Elastic, Splunk HEC, Datadog, or any HTTP endpoint
+- **One-click Render deploy** — deploy in 3 minutes, no Python setup required
 
 | Tag | Description |
 |---|---|
 | `latest` | Latest stable release |
-| `v1.1.0` | Pinned semantic version |
-| `v1.0.0` | Previous stable release |
+| `v1.2.0` | Pinned semantic version |
+| `v1.1.0` | Previous stable release |
 | `sha-<git-sha>` | Exact commit build |
 
 Images are signed with cosign keyless signing (sigstore). All images published to Docker Hub and GHCR on every tagged release.
