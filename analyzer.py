@@ -272,7 +272,11 @@ def check_image_tag(resource, context):
     return findings
 
 
+_WORKLOAD_KINDS = {"Pod", "Deployment", "DaemonSet", "StatefulSet", "Job", "CronJob", "ReplicaSet"}
+
 def check_service_account(resource, context):
+    if resource.get("kind") not in _WORKLOAD_KINDS:
+        return []
     findings = []
     spec = resource.get("spec", {})
     template_spec = spec.get("template", {}).get("spec", spec)
@@ -363,6 +367,8 @@ def check_liveness_readiness(resource, context):
 
 
 def check_security_context(resource, context):
+    if resource.get("kind") not in _WORKLOAD_KINDS:
+        return []
     findings = []
     spec = resource.get("spec", {})
     template_spec = spec.get("template", {}).get("spec", spec)

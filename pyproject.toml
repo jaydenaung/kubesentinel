@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "kubesentinel"
+version = "0.1.0"
+description = "AI-powered Kubernetes security scanner — static checks, compound risk correlation, SA probe"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.10"
+keywords = ["kubernetes", "security", "kubectl", "devsecops", "scanner"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+    "Topic :: System :: Systems Administration",
+]
+dependencies = [
+    "pyyaml>=6.0",
+    "kubernetes>=28.0",
+]
+
+[project.optional-dependencies]
+web = [
+    "anthropic>=0.25.0",
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "sqlalchemy>=2.0.0",
+    "bcrypt>=4.0.0",
+    "python-multipart>=0.0.9",
+    "jinja2>=3.1.0",
+    "aiofiles>=23.0.0",
+    "apscheduler>=3.10.0",
+    "itsdangerous>=2.1.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+kubectl-sentinel = "kubectl_sentinel:main"
+
+[project.urls]
+Homepage = "https://github.com/jaydenaung/kubesentinel"
+Issues   = "https://github.com/jaydenaung/kubesentinel/issues"
+
+[tool.setuptools]
+py-modules = ["kubectl_sentinel", "analyzer"]
