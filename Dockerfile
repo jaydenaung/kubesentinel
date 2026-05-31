@@ -4,8 +4,8 @@ FROM python:3.11-slim
 ARG TARGETARCH=amd64
 
 # Pin tool versions — update these when upgrading dependencies
-ARG TRIVY_VERSION=0.51.4
-ARG HELM_VERSION=3.14.4
+ARG TRIVY_VERSION=0.70.0
+ARG HELM_VERSION=4.2.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
@@ -17,7 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
     # trivy — download pinned release binary directly (no mutable install scripts)
-    curl -fsSL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
+    # Trivy uses different archive names per arch: 64bit (amd64) vs ARM64 (arm64)
+    TRIVY_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "ARM64" || echo "64bit") && \
+    curl -fsSL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-${TRIVY_ARCH}.tar.gz" \
         -o /tmp/trivy.tar.gz && \
     tar xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy && \
     rm /tmp/trivy.tar.gz && \
