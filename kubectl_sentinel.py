@@ -340,7 +340,7 @@ def _print_json(findings: List[Dict], meta: Dict) -> None:
         counts[f.get("severity", "INFO")] = counts.get(f.get("severity", "INFO"), 0) + 1
     print(json.dumps({
         "scanner":   "kubesentinel",
-        "version":   "0.1.0",
+        "version":   "1.0.0",
         "cluster":   meta.get("cluster"),
         "namespace": meta.get("namespace"),
         "summary": {
@@ -437,7 +437,7 @@ examples:
         sys.exit(0)
 
     if args.command == "version":
-        print("kubectl-sentinel 0.1.2")
+        print("kubectl-sentinel 1.0.0")
         sys.exit(0)
 
     # ── Fetch resources ────────────────────────────────────────────────────
@@ -446,6 +446,9 @@ examples:
         path = Path(args.file)
         if not path.exists():
             print(f"error: file not found: {args.file}", file=sys.stderr)
+            sys.exit(1)
+        if path.stat().st_size > 50 * 1024 * 1024:
+            print("error: file exceeds 50MB limit", file=sys.stderr)
             sys.exit(1)
         with open(path) as fh:
             resources = [d for d in _yaml.safe_load_all(fh) if d]
