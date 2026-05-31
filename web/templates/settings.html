@@ -32,6 +32,7 @@
   </p>
 
   <form method="post" action="/settings/webhook">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
     <div class="form-group">
       <label class="form-label">Webhook URL</label>
       <input
@@ -93,6 +94,7 @@
   </form>
 
   <form id="test-form" method="post" action="/settings/webhook/test" style="display:none"></form>
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 </div>
 
 <!-- Payload reference -->

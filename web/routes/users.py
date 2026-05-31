@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 
 from web.auth import check_admin, hash_password
 from web.database import User, get_db
+from web.secure_templates import SecureTemplates
 
-router = APIRouter()
-templates = Jinja2Templates(directory="web/templates")
+router    = APIRouter()
+templates = SecureTemplates(directory="web/templates")
+_MIN_PASSWORD_LEN = 12
 
 
 @router.get("/users")
@@ -42,8 +43,8 @@ async def create_user(
     error = None
     if len(username.strip()) < 3:
         error = "Username must be at least 3 characters."
-    elif len(password) < 8:
-        error = "Password must be at least 8 characters."
+    elif len(password) < _MIN_PASSWORD_LEN:
+        error = f"Password must be at least {_MIN_PASSWORD_LEN} characters."
 
     if not error:
         with get_db() as db:

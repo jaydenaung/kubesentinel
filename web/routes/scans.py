@@ -2,14 +2,14 @@ from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Query, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
+from web.secure_templates import SecureTemplates
 
 from web.auth import check_login
 from web.database import Finding, Scan, get_db
 from web.scanner import run_ai_enrichment, run_patch_generation
 
 router = APIRouter()
-templates = Jinja2Templates(directory="web/templates")
+templates = SecureTemplates(directory="web/templates")
 
 SEVERITY_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
 

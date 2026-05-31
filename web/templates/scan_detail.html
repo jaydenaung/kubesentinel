@@ -39,6 +39,7 @@
       {# ── Enrich with AI ── #}
       {% if scan.enrichment_status in ('none', None) %}
       <form method="post" action="/scans/{{ scan.id }}/enrich" style="margin:0">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <button type="submit" class="btn btn-secondary" style="border-color:#0284c7;color:#0284c7">
           🧠 Enrich with AI
         </button>
@@ -49,6 +50,7 @@
       <span style="font-size:12px;color:#0284c7;background:#e0f2fe;padding:4px 10px;border-radius:10px">🧠 AI enriched</span>
       {% elif scan.enrichment_status == 'failed' %}
       <form method="post" action="/scans/{{ scan.id }}/enrich" style="margin:0">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <button type="submit" class="btn btn-secondary" style="border-color:#dc2626;color:#dc2626" title="Enrichment failed — retry">
           ↺ Retry Enrich
         </button>
@@ -57,6 +59,7 @@
       {# ── AI Patches ── #}
       {% if scan.patches_status == 'none' %}
       <form method="post" action="/scans/{{ scan.id }}/patches" style="margin:0">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <button type="submit" class="btn btn-secondary" style="border-color:#7c3aed;color:#7c3aed">
           ✨ Generate AI Patches
         </button>
@@ -67,6 +70,7 @@
       <span style="font-size:12px;color:#16a34a;background:#dcfce7;padding:4px 10px;border-radius:10px">✅ Patches generated</span>
       {% elif scan.patches_status == 'failed' %}
       <form method="post" action="/scans/{{ scan.id }}/patches" style="margin:0">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <button type="submit" class="btn btn-secondary" style="border-color:#dc2626;color:#dc2626" title="Patch generation failed — retry">
           ↺ Retry Patches
         </button>

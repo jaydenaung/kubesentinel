@@ -6,13 +6,13 @@ import urllib.request
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
+from web.secure_templates import SecureTemplates
 
 from web.auth import check_admin
 from web.database import get_setting, set_setting
 
 router = APIRouter()
-templates = Jinja2Templates(directory="web/templates")
+templates = SecureTemplates(directory="web/templates")
 
 
 @router.get("/settings")
@@ -62,6 +62,10 @@ async def test_webhook(request: Request):
 
     if not url:
         return RedirectResponse("/settings?test_result=no_url", status_code=302)
+
+    from web.webhook import _validate_webhook_url
+    if not _validate_webhook_url(url):
+        return RedirectResponse("/settings?test_result=error&msg=URL+blocked+SSRF+check", status_code=302)
 
     test_payload = {
         "source":   "kubesentinel",

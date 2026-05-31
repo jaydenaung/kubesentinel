@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
+from web.secure_templates import SecureTemplates
 
 from web.auth import check_admin, check_login
 from web.database import Cluster, Finding, Image, Manifest, Scan, get_db
 
 router = APIRouter()
-templates = Jinja2Templates(directory="web/templates")
+templates = SecureTemplates(directory="web/templates")
 
 
 @router.get("/")

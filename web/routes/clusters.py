@@ -1,19 +1,23 @@
+# Copyright 2026 Jayden Aung — Apache 2.0
 import os
 import shutil
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, Request, UploadFile
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
+from sqlalchemy import or_
 
 from web.auth import check_login
 from web.database import Cluster, Finding, Scan, get_db
 from web.scanner import run_scan
 from web.scheduler import remove_cluster_schedule, upsert_cluster_schedule
+from web.secure_templates import SecureTemplates
 
-router = APIRouter()
-templates = Jinja2Templates(directory="web/templates")
+router    = APIRouter()
+templates = SecureTemplates(directory="web/templates")
 KUBECONFIG_DIR = Path("data/kubeconfigs")
+MAX_KUBECONFIG_BYTES = 1 * 1024 * 1024  # 1 MB — kubeconfigs are small
 
 SCHEDULE_OPTIONS = [
     (0,   "Off (manual only)"),
@@ -33,7 +37,10 @@ async def clusters_list(request: Request):
     user = result
 
     with get_db() as db:
-        clusters = db.query(Cluster).order_by(Cluster.added_at.desc()).all()
+        query = db.query(Cluster)
+        if not user.is_admin:
+            query = query.filter(Cluster.added_by == user.id)
+        clusters = query.order_by(Cluster.added_at.desc()).all()
         cluster_data = []
         for c in clusters:
             latest = (
@@ -62,13 +69,15 @@ async def onboard_cluster(
         return result
     user = result
 
+    cluster_name = name.strip()[:128]
+
     with get_db() as db:
-        existing = db.query(Cluster).filter(Cluster.name == name.strip()).first()
+        existing = db.query(Cluster).filter(Cluster.name == cluster_name).first()
         if existing:
             return RedirectResponse("/clusters?error=name_taken", status_code=302)
 
         cluster = Cluster(
-            name=name.strip(),
+            name=cluster_name,
             kubeconfig_path="",
             added_by=user.id,
             added_by_name=user.username,
@@ -78,15 +87,32 @@ async def onboard_cluster(
         db.refresh(cluster)
 
         dest = KUBECONFIG_DIR / f"{cluster.id}.yaml"
-        with open(dest, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-        os.chmod(dest, 0o600)
+        written = 0
+        with open(dest, "wb") as fout:
+            while chunk := await file.read(65536):
+                written += len(chunk)
+                if written > MAX_KUBECONFIG_BYTES:
+                    fout.close()
+                    dest.unlink(missing_ok=True)
+                    db.delete(cluster)
+                    db.commit()
+                    return RedirectResponse("/clusters?error=kubeconfig_too_large", status_code=302)
+                fout.write(chunk)
 
+        os.chmod(dest, 0o600)
         cluster.kubeconfig_path = str(dest)
         db.commit()
         cluster_id = cluster.id
 
     return RedirectResponse(f"/clusters/{cluster_id}", status_code=302)
+
+
+def _owns_cluster(db, cluster_id: int, user) -> "Cluster | None":
+    """Return the cluster if the user owns it or is an admin, else None."""
+    query = db.query(Cluster).filter(Cluster.id == cluster_id)
+    if not user.is_admin:
+        query = query.filter(Cluster.added_by == user.id)
+    return query.first()
 
 
 @router.get("/clusters/{cluster_id}")
@@ -97,7 +123,7 @@ async def cluster_detail(request: Request, cluster_id: int):
     user = result
 
     with get_db() as db:
-        cluster = db.query(Cluster).filter(Cluster.id == cluster_id).first()
+        cluster = _owns_cluster(db, cluster_id, user)
         if not cluster:
             return RedirectResponse("/clusters", status_code=302)
 
@@ -120,12 +146,12 @@ async def cluster_detail(request: Request, cluster_id: int):
         db.expunge_all()
 
     return templates.TemplateResponse(request, "cluster_detail.html", context={
-        "user":           user,
-        "cluster":        cluster,
-        "scans":          scans,
-        "latest_scan":    latest_scan,
-        "findings":       findings,
-        "schedule_opts":  SCHEDULE_OPTIONS,
+        "user":          user,
+        "cluster":       cluster,
+        "scans":         scans,
+        "latest_scan":   latest_scan,
+        "findings":      findings,
+        "schedule_opts": SCHEDULE_OPTIONS,
     })
 
 
@@ -134,7 +160,7 @@ async def trigger_cluster_scan(
     request: Request,
     cluster_id: int,
     background_tasks: BackgroundTasks,
-    scan_mode: str = Form(...),
+    scan_mode: Literal["static", "ai", "cis"] = Form(...),
 ):
     result = check_login(request)
     if isinstance(result, RedirectResponse):
@@ -142,7 +168,7 @@ async def trigger_cluster_scan(
     user = result
 
     with get_db() as db:
-        cluster = db.query(Cluster).filter(Cluster.id == cluster_id).first()
+        cluster = _owns_cluster(db, cluster_id, user)
         if not cluster:
             return RedirectResponse("/clusters", status_code=302)
         scan = Scan(
@@ -166,14 +192,15 @@ async def update_schedule(
     request: Request,
     cluster_id: int,
     schedule_hours: int = Form(...),
-    scan_mode: str = Form(...),
+    scan_mode: Literal["static", "ai", "cis"] = Form(...),
 ):
     result = check_login(request)
     if isinstance(result, RedirectResponse):
         return result
+    user = result
 
     with get_db() as db:
-        cluster = db.query(Cluster).filter(Cluster.id == cluster_id).first()
+        cluster = _owns_cluster(db, cluster_id, user)
         if not cluster:
             return RedirectResponse("/clusters", status_code=302)
         cluster.schedule_hours = schedule_hours

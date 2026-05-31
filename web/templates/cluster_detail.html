@@ -9,6 +9,7 @@
   <div class="flex gap-2">
     {% if user.is_admin %}
     <form method="post" action="/clusters/{{ cluster.id }}/delete" onsubmit="return confirm('Delete this cluster and its kubeconfig?')">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
       <button type="submit" class="btn btn-danger btn-sm">Delete</button>
     </form>
     {% endif %}
@@ -130,6 +131,7 @@
     <div class="card">
       <div class="card-title">Run Scan</div>
       <form method="post" action="/clusters/{{ cluster.id }}/scan">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <input type="hidden" name="scan_mode" value="static">
         <button type="submit" class="btn btn-primary" style="width:100%">Scan Now</button>
       </form>
@@ -140,6 +142,7 @@
       <div class="card-title">AI Enrichment</div>
       {% if latest_scan.enrichment_status in ('none', None) %}
       <form method="post" action="/scans/{{ latest_scan.id }}/enrich">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <button type="submit" class="btn btn-secondary" style="width:100%;border-color:#0284c7;color:#0284c7">
           🧠 Enrich with AI
         </button>
@@ -186,6 +189,7 @@
     <div class="card">
       <div class="card-title">Scheduled Scan</div>
       <form method="post" action="/clusters/{{ cluster.id }}/schedule">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <div class="form-group">
           <label class="form-label">Frequency</label>
           <select name="schedule_hours" class="form-control">

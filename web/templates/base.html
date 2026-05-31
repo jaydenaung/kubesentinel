@@ -170,7 +170,11 @@
     <div class="sidebar-footer">
       Signed in as <span class="username">{{ user.username }}</span>
       {% if user.is_admin %}<span class="badge badge-admin" style="margin-left:4px">admin</span>{% endif %}
-      <br><a href="/logout">Sign out</a>
+      <br>
+      <form method="post" action="/logout" style="display:inline;margin:0">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button type="submit" style="background:none;border:none;padding:0;color:#475569;cursor:pointer;font-size:11px;margin-top:4px">Sign out</button>
+      </form>
     </div>
   </aside>
   <main class="main">

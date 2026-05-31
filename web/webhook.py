@@ -13,16 +13,63 @@ Configuration (env vars):
 Errors are silently logged — a broken webhook never affects scan results.
 """
 
+import ipaddress
 import json
 import os
 import time
 import urllib.error
 import urllib.request
 from typing import Dict, List, Optional
+from urllib.parse import urlparse
 
 from web.database import Finding, Scan, get_db
 
 _SUPPORTED_FORMATS = ("json", "splunk")
+_ALLOWED_SCHEMES   = {"http", "https"}
+
+# Private/reserved ranges that must never be webhook targets (SSRF prevention)
+_BLOCKED_NETWORKS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),   # link-local / AWS metadata
+    ipaddress.ip_network("100.64.0.0/10"),    # shared address space
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+
+def _validate_webhook_url(url: str) -> bool:
+    """Return True only if the URL is safe to POST to (blocks SSRF targets)."""
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+
+    if parsed.scheme not in _ALLOWED_SCHEMES:
+        return False
+
+    host = parsed.hostname or ""
+    if not host:
+        return False
+
+    # If host is an IP address, check against blocked ranges
+    try:
+        addr = ipaddress.ip_address(host)
+        for net in _BLOCKED_NETWORKS:
+            if addr in net:
+                return False
+        return True
+    except ValueError:
+        pass  # hostname — DNS resolution not checked here; rely on scheme + blocked-range checks
+
+    # Block obvious loopback/internal hostnames
+    blocked_hosts = {"localhost", "metadata.google.internal", "169.254.169.254"}
+    if host.lower() in blocked_hosts:
+        return False
+
+    return True
 
 
 def _build_payload(scan: Scan, findings: list) -> Dict:
@@ -72,6 +119,9 @@ def dispatch(scan_id: int) -> None:
     """POST scan results to the configured webhook. No-op if WEBHOOK_URL is unset."""
     url = _cfg("webhook_url", "WEBHOOK_URL").strip()
     if not url:
+        return
+    if not _validate_webhook_url(url):
+        print(f"[webhook] blocked unsafe URL: {url}")
         return
 
     token  = _cfg("webhook_token", "WEBHOOK_TOKEN").strip()
