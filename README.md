@@ -4,13 +4,14 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![PyPI](https://img.shields.io/pypi/v/kubesentinel.svg?label=PyPI&logo=pypi&logoColor=white)](https://pypi.org/project/kubesentinel/)
 [![AI Powered](https://img.shields.io/badge/AI-Powered-blueviolet)](https://www.anthropic.com/)
 [![Tests](https://img.shields.io/badge/tests-76%20passing-brightgreen.svg)](tests/)
 [![Docker Hub](https://img.shields.io/docker/v/jaydenaung17/kubesentinel?label=Docker%20Hub&logo=docker)](https://hub.docker.com/r/jaydenaung17/kubesentinel)
 [![Docker Pulls](https://img.shields.io/docker/pulls/jaydenaung17/kubesentinel?logo=docker)](https://hub.docker.com/r/jaydenaung17/kubesentinel)
 [![GHCR](https://img.shields.io/badge/GHCR-ghcr.io%2Fjaydenaung%2Fkubesentinel-blue?logo=github)](https://ghcr.io/jaydenaung/kubesentinel)
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/jaydenaung/k8s-yaml-misconfig-checker-agent)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/jaydenaung/kubesentinel)
 
 ---
 
@@ -68,6 +69,70 @@ docker run -p 8000:8000 -v kubesentinel-data:/app/data jaydenaung17/kubesentinel
 Open `http://localhost:8000`. A setup wizard creates your admin account on first visit.
 
 **No API key?** Static manifest scanning (24 checks), CVE scanning, and CIS compliance all work without one. AI enrichment and patch generation require the key.
+
+---
+
+## kubectl Plugin — No API Key Required
+
+Install once, scan any cluster instantly. Works on macOS, Linux, and Windows.
+
+```bash
+pip install kubesentinel
+```
+
+```bash
+# Scan all namespaces in your current cluster context
+kubectl sentinel scan
+
+# Scan a specific namespace
+kubectl sentinel scan -n production
+
+# Scan a local manifest file (no cluster needed)
+kubectl sentinel scan --file deployment.yaml
+
+# CI/CD gate — exits 1 if any CRITICAL finding is found
+kubectl sentinel scan --fail-on CRITICAL && kubectl apply -f .
+
+# Machine-readable JSON (pipe to jq, log to SIEM, etc.)
+kubectl sentinel scan --output json | jq '.findings[] | select(.severity=="CRITICAL")'
+
+# SARIF format for GitHub Advanced Security
+kubectl sentinel scan --output sarif > results.sarif
+
+# Use a specific kubeconfig context
+kubectl sentinel scan --context staging-cluster -n payments
+
+# Check version
+kubectl sentinel version
+```
+
+**What it detects — no API key needed:**
+
+| | |
+|---|---|
+| 24 static security checks | CIS Benchmark · NSA/CISA · OWASP K8s Top 10 |
+| Compound risk correlation | CVE + misconfiguration + RBAC + network → exploit chain |
+| SA privilege probe | `kubectl auth can-i` — confirms what each SA can actually access |
+| JSON / SARIF output | CI/CD pipelines · GitHub Advanced Security |
+
+**GitHub Actions example:**
+
+```yaml
+- name: KubeSentinel security gate
+  run: |
+    pip install kubesentinel
+    kubectl sentinel scan --output sarif > results.sarif
+    kubectl sentinel scan --fail-on CRITICAL
+```
+
+```yaml
+# Upload SARIF to GitHub Advanced Security (shows findings in Security tab)
+- uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: results.sarif
+```
+
+> **No API key required for the kubectl plugin.** All checks, compound risk correlation, and SA probing run locally — nothing leaves your environment.
 
 ---
 
@@ -153,6 +218,7 @@ finish
 | **CIS compliance scanning** | Maps cluster config against CIS Kubernetes Benchmark v1.9. Per-control PASS/FAIL/SKIP with score and section grouping. |
 | **CVE scanning** | Trivy integration — top CVEs per severity, stored per scan, image CVE dashboard. |
 | **Live reasoning feed** | Watch every AI tool call as it fires during a scan — real-time visibility into the agent's reasoning. |
+| **SIEM webhook integration** | POST scan results to Elastic, Splunk (HEC), Datadog, or any HTTP endpoint after every scan. Configurable via Settings UI or env vars. No new dependencies. |
 | **Helm support** | `helm template` rendering before analysis. |
 | **PR-level scanning** | GitHub Actions — comments on PRs, blocks merge on CRITICAL findings. |
 | **Suppression allowlist** | Acknowledge accepted risks with audit trail. |
@@ -162,22 +228,29 @@ finish
 
 ---
 
-## Latest Release — v1.0.0
+## Latest Release — v1.1.0
 
-> **KubeSentinel v1.0.0 is available as a signed container image on Docker Hub and GHCR.**
+> **KubeSentinel v1.1.0 is available as a signed container image on Docker Hub and GHCR.**
 
 | | |
 |---|---|
-| **Docker Hub** | [`jaydenaung17/kubesentinel:v1.0.0`](https://hub.docker.com/r/jaydenaung17/kubesentinel) |
-| **GHCR** | `ghcr.io/jaydenaung/kubesentinel:v1.0.0` |
+| **Docker Hub** | [`jaydenaung17/kubesentinel:v1.1.0`](https://hub.docker.com/r/jaydenaung17/kubesentinel) |
+| **GHCR** | `ghcr.io/jaydenaung/kubesentinel:v1.1.0` |
 | **Platforms** | `linux/amd64` · `linux/arm64` (Apple Silicon native) |
 | **Image signing** | cosign keyless (sigstore) — verifiable supply chain |
 | **Bundled tools** | kubectl · trivy · helm — no separate installation required |
 
+**What's new in v1.1.0:**
+- **24 static checks** (up from 14) — AppArmor, allowPrivilegeEscalation, SSH port exposure, Ingress TLS, LoadBalancer exposure, image digest pinning, capability drop, and more
+- **Live reasoning feed** — SSE-based real-time tool call stream; watch the AI agent reason during every scan
+- **SIEM webhook** — POST scan results to Elastic, Splunk HEC, Datadog, or any HTTP endpoint; configurable from the Settings UI
+- **One-click Render deploy** — deploy KubeSentinel in 3 minutes, no Python setup required
+
 | Tag | Description |
 |---|---|
 | `latest` | Latest stable release |
-| `v1.0.0` | Pinned semantic version |
+| `v1.1.0` | Pinned semantic version |
+| `v1.0.0` | Previous stable release |
 | `sha-<git-sha>` | Exact commit build |
 
 Images are signed with cosign keyless signing (sigstore). All images published to Docker Hub and GHCR on every tagged release.
@@ -509,8 +582,11 @@ Suppressed findings appear in the report footer for auditability.
 | ✅ 1f | **AI enrichment** — post-scan attack scenario generation for manifest and cluster findings | **Shipped** |
 | ✅ 1g | **Token tracking + prompt caching** — per-scan token usage, USD cost estimate, ~90% cache savings | **Shipped** |
 | ✅ 1h | **Live reasoning feed** — SSE-based real-time tool call stream during active scans | **Shipped** |
+| ✅ 1i | **SIEM webhook** — POST scan results to Elastic, Splunk HEC, Datadog, or any HTTP endpoint | **Shipped** |
 | 🚀 v1.0.0 | **Container release** — signed multi-platform image on Docker Hub + GHCR | **Released** |
-| 📋 2 | **Scan diff / posture trending** — new/resolved/unchanged findings between scans, posture score over time | Planned |
+| 🚀 v1.1.0 | **24 static checks · live reasoning feed · SIEM webhook · one-click Render deploy** | **Released** |
+| ✅ 2 | **Scan diff** — new/fixed/worsened findings between any two scans, baseline picker | **Shipped** |
+| ✅ 2b | **kubectl plugin** — `pip install kubesentinel` · static scan · compound risk · SA probe · JSON/SARIF output | **Shipped** |
 | 📋 3 | **Shareable scan reports** — public read-only link to any scan result, no login required | Planned |
 | 📋 4 | **Natural language security query** — ask questions across scan history in plain English | Planned |
 | 📋 5 | **Verification loop** — agent applies patch, re-scans, confirms finding resolved | Planned |
