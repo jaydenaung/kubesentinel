@@ -73,6 +73,11 @@
       </form>
       {% endif %}
     {% endif %}
+    {% if prev_scan %}
+    <a href="/scans/{{ scan.id }}/diff" class="btn btn-secondary" style="border-color:#0ea5e9;color:#0ea5e9">
+      ↔ Compare with #{{ prev_scan.id }}
+    </a>
+    {% endif %}
     <a href="javascript:history.back()" class="btn btn-secondary">← Back</a>
   </div>
   {% if scan.status == 'done' and (scan.enrichment_status == 'generating' or scan.patches_status == 'generating') %}

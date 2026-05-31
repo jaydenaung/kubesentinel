@@ -203,12 +203,15 @@
     <div class="card">
       <div class="card-title">Scan History</div>
       {% for s in scans[:10] %}
-      <div class="flex items-center gap-2 mb-2">
+      <div class="flex items-center gap-2 mb-2" style="flex-wrap:wrap">
         <a href="/scans/{{ s.id }}" class="td-link">#{{ s.id }}</a>
         <span class="badge badge-{{ s.scan_mode }}">{{ s.scan_mode }}</span>
         <span class="badge badge-{{ s.status }}">{{ s.status }}</span>
         {% if s.critical_count %}<span class="badge badge-critical">{{ s.critical_count }}C</span>{% endif %}
         <span class="text-muted text-sm">{{ s.triggered_by or '' }}</span>
+        {% if s.status == 'done' %}
+        <a href="/scans/{{ s.id }}/diff" style="font-size:11px;color:#0ea5e9;margin-left:auto" title="Compare with previous scan">↔ diff</a>
+        {% endif %}
       </div>
       {% endfor %}
     </div>

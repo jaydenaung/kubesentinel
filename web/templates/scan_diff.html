@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}Diff — Scan #{{ scan.id }} vs #{{ baseline.id if baseline else '?' }} — KubeSentinel{% endblock %}
+{% block content %}
+<style>
+  .diff-new     { border-left:4px solid #dc2626; }
+  .diff-fixed   { border-left:4px solid #16a34a; opacity:.85; }
+  .diff-worsened{ border-left:4px solid #ea580c; }
+  .diff-improved{ border-left:4px solid #2563eb; }
+  .diff-unchanged{ border-left:4px solid #cbd5e1; opacity:.6; }
+  .diff-section-title {
+    font-size:13px; font-weight:700; padding:10px 14px; border-radius:6px 6px 0 0;
+    display:flex; align-items:center; gap:8px;
+  }
+  .ds-new      { background:#fee2e2; color:#dc2626; }
+  .ds-fixed    { background:#dcfce7; color:#16a34a; }
+  .ds-worsened { background:#ffedd5; color:#ea580c; }
+  .ds-improved { background:#dbeafe; color:#1d4ed8; }
+  .ds-unchanged{ background:#f8fafc; color:#64748b; }
+  .diff-block  { border:1px solid #e2e8f0; border-radius:8px; margin-bottom:16px; overflow:hidden; }
+  .diff-items  { padding:12px 16px; }
+  .sev-arrow   { font-family:ui-monospace,monospace; font-size:12px; }
+  details > summary { cursor:pointer; list-style:none; }
+  details > summary::-webkit-details-marker { display:none; }
+</style>
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Scan Diff — {{ scan.target_name }}</div>
+    <div class="page-subtitle">
+      Scan <a href="/scans/{{ scan.id }}" style="color:#3b82f6">#{{ scan.id }}</a>
+      {% if baseline %}
+      vs baseline <a href="/scans/{{ baseline.id }}" style="color:#3b82f6">#{{ baseline.id }}</a>
+      {% else %}
+      — no baseline found
+      {% endif %}
+    </div>
+  </div>
+  <div class="flex gap-2 items-center">
+    {% if siblings %}
+    <form method="get" action="/scans/{{ scan.id }}/diff" style="margin:0;display:flex;gap:6px;align-items:center">
+      <label style="font-size:12px;color:#64748b;white-space:nowrap">Compare against:</label>
+      <select name="compare_to" class="form-control" style="width:auto;font-size:12px" onchange="this.form.submit()">
+        <option value="">Auto (previous)</option>
+        {% for s in siblings %}
+        <option value="{{ s.id }}" {% if baseline and s.id == baseline.id %}selected{% endif %}>
+          #{{ s.id }} — {{ s.completed_at.strftime('%Y-%m-%d %H:%M') if s.completed_at else 'done' }}
+        </option>
+        {% endfor %}
+      </select>
+    </form>
+    {% endif %}
+    <a href="/scans/{{ scan.id }}" class="btn btn-secondary">← Scan #{{ scan.id }}</a>
+  </div>
+</div>
+
+{% if not baseline %}
+<div class="card">
+  <div class="empty">
+    <div class="empty-icon">↔</div>
+    <h3>No baseline scan found</h3>
+    <p>Run at least two scans on this target to compare them.</p>
+  </div>
+</div>
+{% else %}
+
+{# ── Summary banner ── #}
+<div class="card" style="padding:16px 20px;margin-bottom:20px">
+  <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+    <span style="font-size:13px;font-weight:600;color:#1e293b">Summary</span>
+    {% if diff.new %}
+    <span style="background:#fee2e2;color:#dc2626;padding:5px 12px;border-radius:10px;font-size:13px;font-weight:600">
+      +{{ diff.new|length }} new
+    </span>
+    {% endif %}
+    {% if diff.worsened %}
+    <span style="background:#ffedd5;color:#ea580c;padding:5px 12px;border-radius:10px;font-size:13px;font-weight:600">
+      ▲ {{ diff.worsened|length }} worsened
+    </span>
+    {% endif %}
+    {% if diff.improved %}
+    <span style="background:#dbeafe;color:#1d4ed8;padding:5px 12px;border-radius:10px;font-size:13px;font-weight:600">
+      ▼ {{ diff.improved|length }} improved
+    </span>
+    {% endif %}
+    {% if diff.fixed %}
+    <span style="background:#dcfce7;color:#16a34a;padding:5px 12px;border-radius:10px;font-size:13px;font-weight:600">
+      -{{ diff.fixed|length }} fixed
+    </span>
+    {% endif %}
+    <span style="background:#f1f5f9;color:#64748b;padding:5px 12px;border-radius:10px;font-size:13px">
+      {{ diff.unchanged|length }} unchanged
+    </span>
+    {% if not diff.new and not diff.worsened and not diff.fixed and not diff.improved %}
+    <span style="color:#16a34a;font-weight:600">No changes between scans.</span>
+    {% endif %}
+  </div>
+</div>
+
+{# ── New findings ── #}
+{% if diff.new %}
+<div class="diff-block">
+  <div class="diff-section-title ds-new">
+    ⚠ {{ diff.new|length }} New Finding{{ 's' if diff.new|length != 1 else '' }}
+    <span style="font-size:11px;font-weight:400;margin-left:4px">introduced since scan #{{ baseline.id }}</span>
+  </div>
+  <div class="diff-items">
+    {% for f in diff.new %}
+    <div class="finding {{ f.severity }} diff-new" style="margin-bottom:10px">
+      <div class="finding-header">
+        <div class="finding-title">{{ f.title }}</div>
+        <span class="badge badge-{{ f.severity|lower }}">{{ f.severity }}</span>
+        <span style="background:#fee2e2;color:#dc2626;font-size:11px;padding:2px 7px;border-radius:10px;font-weight:600">NEW</span>
+      </div>
+      <div class="finding-meta">
+        <span><code>{{ f.check_id }}</code></span>
+        <span>{{ f.context }}</span>
+      </div>
+      <div class="finding-detail">{{ f.detail }}</div>
+      {% if f.remediation %}<div class="finding-fix">🔧 {{ f.remediation }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# ── Worsened ── #}
+{% if diff.worsened %}
+<div class="diff-block">
+  <div class="diff-section-title ds-worsened">
+    ▲ {{ diff.worsened|length }} Severity Worsened
+  </div>
+  <div class="diff-items">
+    {% for item in diff.worsened %}
+    <div class="finding {{ item.after.severity }} diff-worsened" style="margin-bottom:10px">
+      <div class="finding-header">
+        <div class="finding-title">{{ item.after.title }}</div>
+        <span class="sev-arrow">
+          <span class="badge badge-{{ item.before.severity|lower }}">{{ item.before.severity }}</span>
+          → <span class="badge badge-{{ item.after.severity|lower }}">{{ item.after.severity }}</span>
+        </span>
+      </div>
+      <div class="finding-meta">
+        <span><code>{{ item.after.check_id }}</code></span>
+        <span>{{ item.after.context }}</span>
+      </div>
+      <div class="finding-detail">{{ item.after.detail }}</div>
+      {% if item.after.remediation %}<div class="finding-fix">🔧 {{ item.after.remediation }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# ── Improved ── #}
+{% if diff.improved %}
+<div class="diff-block">
+  <div class="diff-section-title ds-improved">
+    ▼ {{ diff.improved|length }} Severity Improved
+  </div>
+  <div class="diff-items">
+    {% for item in diff.improved %}
+    <div class="finding {{ item.after.severity }} diff-improved" style="margin-bottom:10px">
+      <div class="finding-header">
+        <div class="finding-title">{{ item.after.title }}</div>
+        <span class="sev-arrow">
+          <span class="badge badge-{{ item.before.severity|lower }}">{{ item.before.severity }}</span>
+          → <span class="badge badge-{{ item.after.severity|lower }}">{{ item.after.severity }}</span>
+        </span>
+      </div>
+      <div class="finding-meta">
+        <span><code>{{ item.after.check_id }}</code></span>
+        <span>{{ item.after.context }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# ── Fixed ── #}
+{% if diff.fixed %}
+<div class="diff-block">
+  <div class="diff-section-title ds-fixed">
+    ✓ {{ diff.fixed|length }} Fixed / Resolved
+    <span style="font-size:11px;font-weight:400;margin-left:4px">present in scan #{{ baseline.id }}, gone now</span>
+  </div>
+  <div class="diff-items">
+    {% for f in diff.fixed %}
+    <div class="finding {{ f.severity }} diff-fixed" style="margin-bottom:10px">
+      <div class="finding-header">
+        <div class="finding-title" style="text-decoration:line-through;color:#64748b">{{ f.title }}</div>
+        <span class="badge badge-{{ f.severity|lower }}">{{ f.severity }}</span>
+        <span style="background:#dcfce7;color:#16a34a;font-size:11px;padding:2px 7px;border-radius:10px;font-weight:600">FIXED</span>
+      </div>
+      <div class="finding-meta">
+        <span><code>{{ f.check_id }}</code></span>
+        <span>{{ f.context }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# ── Unchanged (collapsed) ── #}
+{% if diff.unchanged %}
+<details>
+  <summary>
+    <div class="diff-block" style="margin-bottom:0">
+      <div class="diff-section-title ds-unchanged" style="cursor:pointer;user-select:none">
+        <span>▸</span>
+        {{ diff.unchanged|length }} Unchanged Finding{{ 's' if diff.unchanged|length != 1 else '' }}
+        <span style="font-size:11px;font-weight:400">click to expand</span>
+      </div>
+    </div>
+  </summary>
+  <div class="diff-block" style="border-top:none;border-radius:0 0 8px 8px">
+    <div class="diff-items">
+      {% for f in diff.unchanged %}
+      <div class="finding {{ f.severity }} diff-unchanged" style="margin-bottom:8px">
+        <div class="finding-header">
+          <div class="finding-title">{{ f.title }}</div>
+          <span class="badge badge-{{ f.severity|lower }}">{{ f.severity }}</span>
+        </div>
+        <div class="finding-meta">
+          <span><code>{{ f.check_id }}</code></span>
+          <span>{{ f.context }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</details>
+{% endif %}
+
+{% endif %}{# end if baseline #}
+{% endblock %}
