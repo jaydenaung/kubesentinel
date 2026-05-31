@@ -112,6 +112,10 @@ class SecurityMiddleware(BaseHTTPMiddleware):
 # ── Application ────────────────────────────────────────────────────────────────
 app = FastAPI(title="KubeSentinel", docs_url=None, redoc_url=None)
 
+# Middleware order matters: last added = outermost = runs first.
+# SecurityMiddleware must be inner (added first) so that SessionMiddleware
+# has already populated request.session before CSRF validation runs.
+app.add_middleware(SecurityMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=_get_secret_key(),
@@ -120,7 +124,6 @@ app.add_middleware(
     same_site="strict",     # prevents CSRF via cross-site cookie sending
     https_only=os.environ.get("HTTPS_ONLY", "false").lower() == "true",
 )
-app.add_middleware(SecurityMiddleware)
 
 app.include_router(setup.router)
 app.include_router(auth.router)
