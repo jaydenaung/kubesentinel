@@ -93,8 +93,9 @@
     </div>
   </form>
 
-  <form id="test-form" method="post" action="/settings/webhook/test" style="display:none"></form>
+  <form id="test-form" method="post" action="/settings/webhook/test" style="display:none">
     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  </form>
 </div>
 
 <!-- Payload reference -->
