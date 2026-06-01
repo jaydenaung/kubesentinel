@@ -859,7 +859,7 @@ examples:
         sys.exit(0)
 
     if args.command == "version":
-        print("kubectl-sentinel 1.1.0")
+        print("kubectl-sentinel 1.1.1")
         sys.exit(0)
 
     # ── probe dispatch ─────────────────────────────────────────────────────
