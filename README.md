@@ -15,6 +15,14 @@
 
 ---
 
+## Demo
+
+<video src="recordings/demo1.mp4" controls width="100%"></video>
+
+> Full walkthrough: manifest upload → static scan → compound risk correlation → AI enrichment → AI-generated YAML patches → CIS compliance → SIEM webhook.
+
+---
+
 ## What No Other Scanner Does
 
 Most Kubernetes security tools report individual misconfigurations in isolation:
@@ -161,17 +169,29 @@ kubectl sentinel version
 
 On-prem security dashboard — runs on your internal network, no SaaS dependency, no data leaves your environment. Multi-user, scan history, scheduled scans, image CVE view, CIS compliance dashboard.
 
+---
+
 ![Cluster Scan with AI Enrichment](img/cluster-scan-ai-enriched.png)
 
-> Cluster scan showing compound risk correlation across CVE, misconfiguration, RBAC, and network signals — with AI-generated attacker chains and prioritised remediation steps.
+> **Compound risk correlation** — 4 correlated signals on the same pod (CVE + misconfiguration + RBAC escalation + network exposure) collapsed into a single CRITICAL finding with a proven exploit chain and AI-generated YAML patch inline.
+
+---
 
 ![AI-Generated Patch](img/ai-generated-patch.png)
 
-> AI-generated YAML patch collapsing multiple findings into one minimal `securityContext` change.
+> **AI-generated YAML patch** — corrected `securityContext` collapsing multiple findings into one minimal change: `runAsNonRoot`, `privileged: false`, `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, `capabilities.drop: ALL`.
+
+---
+
+![Container Image CVE Scan](img/container-images.png)
+
+> **Container image CVE view** — all images detected across scans with CRITICAL/HIGH/MEDIUM/LOW counts, top CVEs per severity tier, and fix availability. Powered by Trivy.
+
+---
 
 ![CIS Compliance Scan](img/cis-compliance-scan.png)
 
-> CIS Kubernetes Benchmark v1.9 — per-control PASS/FAIL with expected vs actual values, evidence source, and remediation guidance.
+> **CIS Kubernetes Benchmark v1.9** — per-control PASS/FAIL/SKIP with compliance score, evidence source, and remediation guidance. 50% score shown on Docker Desktop — each failing control includes the exact fix command.
 
 ---
 
