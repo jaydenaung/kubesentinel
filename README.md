@@ -183,8 +183,6 @@ On-prem security dashboard — runs on your internal network, no SaaS dependency
 
 ---
 
-![Container Image CVE Scan](img/container-images.png)
-
 > **Container image CVE view** — all images detected across scans with CRITICAL/HIGH/MEDIUM/LOW counts, top CVEs per severity tier, and fix availability. Powered by Trivy.
 
 ---
@@ -248,28 +246,29 @@ finish
 
 ---
 
-## Latest Release — v1.2.0
+## Latest Release — v1.0.1
 
-> **KubeSentinel v1.2.0 is available as a signed container image on Docker Hub and GHCR, and as a pip package on PyPI.**
+> **KubeSentinel v1.0.1 is available as a multi-arch container image on Docker Hub and GHCR, and as a pip package on PyPI.**
 
 | | |
 |---|---|
 | **PyPI** | [`pip install kubesentinel`](https://pypi.org/project/kubesentinel/) |
-| **Docker Hub** | [`jaydenaung17/kubesentinel:v1.2.0`](https://hub.docker.com/r/jaydenaung17/kubesentinel) |
-| **GHCR** | `ghcr.io/jaydenaung/kubesentinel:v1.2.0` |
+| **Docker Hub** | [`jaydenaung17/kubesentinel:v1.0.1`](https://hub.docker.com/r/jaydenaung17/kubesentinel) |
+| **GHCR** | `ghcr.io/jaydenaung/kubesentinel:v1.0.1` |
 | **Platforms** | `linux/amd64` · `linux/arm64` (Apple Silicon native) |
-| **Image signing** | cosign keyless (sigstore) — verifiable supply chain |
+| **Image signing** | cosign keyless (sigstore) — on CI-built tagged releases via GitHub Actions |
 | **Bundled tools** | kubectl · trivy · helm — no separate installation required |
 
-**What's new in v1.2.0:**
+**What's new in v1.0.1:**
+- **Security fix** — CSRF tokens added to all POST forms (compliance scan, manifest upload, cluster retry-enrich, settings webhook test)
+
+**What's in v1.0.0:**
 - **kubectl plugin** — `pip install kubesentinel` → `kubectl sentinel scan`; no API key required; works on any cluster
 - **SARIF output** — `kubectl sentinel scan --output sarif` uploads findings to GitHub Advanced Security
 - **CI/CD gate** — `kubectl sentinel scan --fail-on CRITICAL` exits 1; drop into any pipeline
 - **Scan diff** — compare any two scans of the same target; new/fixed/worsened/unchanged findings; baseline picker
 - **Compound risk in the terminal** — exploit chains surface without a web server
-
-**What's new in v1.1.0:**
-- **24 static checks** — AppArmor, allowPrivilegeEscalation, SSH port exposure, Ingress TLS, LoadBalancer exposure, image digest pinning, capability drop, and more
+- **24 static checks** — CIS, NSA/CISA, OWASP K8s Top 10 — AppArmor, allowPrivilegeEscalation, SSH port exposure, Ingress TLS, LoadBalancer exposure, image digest pinning, capability drop, and more
 - **Live reasoning feed** — SSE-based real-time tool call stream; watch the AI agent reason during every scan
 - **SIEM webhook** — POST scan results to Elastic, Splunk HEC, Datadog, or any HTTP endpoint
 - **One-click Render deploy** — deploy in 3 minutes, no Python setup required
@@ -277,11 +276,10 @@ finish
 | Tag | Description |
 |---|---|
 | `latest` | Latest stable release |
-| `v1.2.0` | Pinned semantic version |
-| `v1.1.0` | Previous stable release |
-| `sha-<git-sha>` | Exact commit build |
+| `v1.0.1` | Current stable (security fix) |
+| `v1.0.0` | Initial public release |
 
-Images are signed with cosign keyless signing (sigstore). All images published to Docker Hub and GHCR on every tagged release.
+All images published to Docker Hub and GHCR. Tagged releases built via GitHub Actions are additionally signed with cosign keyless signing (sigstore).
 
 ---
 
@@ -611,8 +609,8 @@ Suppressed findings appear in the report footer for auditability.
 | ✅ 1g | **Token tracking + prompt caching** — per-scan token usage, USD cost estimate, ~90% cache savings | **Shipped** |
 | ✅ 1h | **Live reasoning feed** — SSE-based real-time tool call stream during active scans | **Shipped** |
 | ✅ 1i | **SIEM webhook** — POST scan results to Elastic, Splunk HEC, Datadog, or any HTTP endpoint | **Shipped** |
-| 🚀 v1.0.0 | **Container release** — signed multi-platform image on Docker Hub + GHCR | **Released** |
-| 🚀 v1.1.0 | **24 static checks · live reasoning feed · SIEM webhook · one-click Render deploy** | **Released** |
+| 🚀 v1.0.0 | **Initial release** — multi-arch image on Docker Hub + GHCR · kubectl plugin · scan diff · SIEM webhook · 24 static checks | **Released** |
+| 🚀 v1.0.1 | **Security fix** — CSRF tokens on all POST forms | **Released** |
 | ✅ 2 | **Scan diff** — new/fixed/worsened findings between any two scans, baseline picker | **Shipped** |
 | ✅ 2b | **kubectl plugin** — `pip install kubesentinel` · static scan · compound risk · SA probe · JSON/SARIF output | **Shipped** |
 | 📋 3 | **Shareable scan reports** — public read-only link to any scan result, no login required | Planned |
