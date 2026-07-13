@@ -92,6 +92,9 @@ def run_static_checks(resources: List[Dict]) -> List[Dict]:
             check_env_var_secrets,
             check_topology_spread,
             check_drop_all_capabilities,
+            check_host_aliases,
+            check_unsafe_sysctls,
+            check_fs_group,
         ]
 
         for fn in fns:
@@ -606,6 +609,96 @@ def check_drop_all_capabilities(resource, context):
     return findings
 
 
+def check_host_aliases(resource, context):
+    """K8S-025 — Pod uses hostAliases to manipulate DNS."""
+    spec = resource.get("spec", {})
+    template_spec = spec.get("template", {}).get("spec", spec)
+    aliases = template_spec.get("hostAliases", [])
+    if aliases:
+        return [_finding(
+            "K8S-025", "HIGH", context,
+            "hostAliases configured — DNS manipulation possible",
+            f"Pod has {len(aliases)} hostAlias entry/entries. An attacker with pod access can "
+            "redirect internal services (e.g., metadata endpoints, databases) by injecting "
+            "fake /etc/hosts entries.",
+            "Remove hostAliases unless absolutely required. Use DNS services (CoreDNS) instead.",
+            "spec.template.spec.hostAliases"
+        )]
+    return []
+
+
+def check_unsafe_sysctls(resource, context):
+    """K8S-026 — Container uses unsafe or kernel-level sysctls."""
+    UNSAFE_PREFIXES = ("net.", "kernel.", "fs.", "vm.")
+    UNSAFE_EXACT = {"kernel.shm_rmid_forced", "kernel.msgmax", "kernel.msgmnb", "kernel.msgssz"}
+    findings = []
+
+    # Collect sysctls from both pod-level and container-level securityContext
+    spec = resource.get("spec", {})
+    template_spec = spec.get("template", {}).get("spec", spec)
+    pod_sc = template_spec.get("securityContext", {})
+    pod_sysctls = pod_sc.get("sysctls", {})
+
+    for name, value in pod_sysctls.items():
+        is_unsafe = (
+            any(name.startswith(p) for p in UNSAFE_PREFIXES)
+            or name in UNSAFE_EXACT
+        )
+        if is_unsafe:
+            findings.append(_finding(
+                "K8S-026", "HIGH", context,
+                f"Unsafe sysctl '{name}' set on pod",
+                f"Sysctl '{name}' modifies kernel or network parameters. On a shared node, "
+                "this can affect other pods or be used for privilege escalation.",
+                f"Remove sysctl '{name}' from the pod securityContext, or use a PodSecurityPolicy "
+                "to restrict allowed sysctls.",
+                "spec.template.spec.securityContext.sysctls"
+            ))
+
+    for c in _get_containers(resource):
+        sc = c.get("securityContext", {})
+        sysctls = sc.get("sysctls", {})
+        for name, value in sysctls.items():
+            is_unsafe = (
+                any(name.startswith(p) for p in UNSAFE_PREFIXES)
+                or name in UNSAFE_EXACT
+            )
+            if is_unsafe:
+                findings.append(_finding(
+                    "K8S-026", "HIGH", context,
+                    f"Unsafe sysctl '{name}' set on container: {c.get('name')}",
+                    f"Sysctl '{name}' modifies kernel or network parameters. On a shared node, "
+                    "this can affect other pods or be used for privilege escalation.",
+                    f"Remove sysctl '{name}' from the container securityContext, or use a PodSecurityPolicy "
+                    "to restrict allowed sysctls.",
+                    f"spec.containers[{c.get('name')}].securityContext.sysctls.{name}"
+                ))
+    return findings
+
+
+def check_fs_group(resource, context):
+    """K8S-027 — Workload with volumes missing fsGroup."""
+    if resource.get("kind") not in _WORKLOAD_KINDS:
+        return []
+    spec = resource.get("spec", {})
+    template_spec = spec.get("template", {}).get("spec", spec)
+    volumes = template_spec.get("volumes", [])
+    if not volumes:
+        return []
+    pod_sc = template_spec.get("securityContext", {})
+    if pod_sc.get("fsGroup") is None:
+        return [_finding(
+            "K8S-027", "LOW", context,
+            "No fsGroup defined — volume file permissions may be incorrect",
+            "Workload has volumes but no fsGroup is set. Without fsGroup, files on shared "
+            "volumes may be owned by root, forcing containers to run as root to write data.",
+            "Set securityContext.fsGroup to a dedicated GID (e.g., 1000) so volume files "
+            "are accessible without root privileges.",
+            "spec.template.spec.securityContext.fsGroup"
+        )]
+    return []
+
+
 # ─────────────────────────────────────────────
 # Registry — used by the agent tool layer
 # ─────────────────────────────────────────────
@@ -635,6 +728,9 @@ CHECK_REGISTRY = {
     "K8S-022": check_env_var_secrets,
     "K8S-023": check_topology_spread,
     "K8S-024": check_drop_all_capabilities,
+    "K8S-025": check_host_aliases,
+    "K8S-026": check_unsafe_sysctls,
+    "K8S-027": check_fs_group,
 }
 
 

@@ -17,6 +17,9 @@ from analyzer import (
     check_secrets_in_env,
     check_liveness_readiness,
     check_rbac_wildcard,
+    check_host_aliases,
+    check_unsafe_sysctls,
+    check_fs_group,
     run_check_by_id,
 )
 
@@ -311,3 +314,115 @@ def test_run_check_by_id_all():
 def test_run_check_by_id_unknown_returns_empty():
     r = deployment()
     assert run_check_by_id("K8S-999", r) == []
+
+
+# ── check_host_aliases ────────────────────────────────────────────────────────
+
+def test_host_aliases_detected():
+    r = deployment(spec_overrides={
+        "hostAliases": [{"ip": "1.2.3.4", "hostnames": ["evil.com"]}]
+    })
+    findings = check_host_aliases(r, "Deployment/test")
+    assert len(findings) == 1
+    assert findings[0]["check_id"] == "K8S-025"
+    assert findings[0]["severity"] == "HIGH"
+
+
+def test_host_aliases_clean():
+    r = deployment()
+    findings = check_host_aliases(r, "Deployment/test")
+    assert findings == []
+
+
+def test_host_aliases_multiple_entries():
+    r = deployment(spec_overrides={
+        "hostAliases": [
+            {"ip": "1.2.3.4", "hostnames": ["a.com"]},
+            {"ip": "5.6.7.8", "hostnames": ["b.com"]},
+        ]
+    })
+    findings = check_host_aliases(r, "Deployment/test")
+    assert len(findings) == 1
+    assert "2 hostAlias" in findings[0]["detail"]
+
+
+# ── check_unsafe_sysctls ──────────────────────────────────────────────────────
+
+def test_unsafe_net_sysctl_detected():
+    r = deployment([container(sc={"sysctls": {"net.ipv4.ip_forward": "1"}})])
+    findings = check_unsafe_sysctls(r, "Deployment/test")
+    assert len(findings) == 1
+    assert findings[0]["check_id"] == "K8S-026"
+    assert findings[0]["severity"] == "HIGH"
+
+
+def test_unsafe_pod_level_sysctl_detected():
+    r = deployment(spec_overrides={
+        "securityContext": {"sysctls": {"net.ipv4.ip_forward": "1"}}
+    })
+    findings = check_unsafe_sysctls(r, "Deployment/test")
+    assert len(findings) == 1
+    assert findings[0]["check_id"] == "K8S-026"
+    assert "pod" in findings[0]["title"].lower()
+
+
+def test_unsafe_kernel_sysctl_detected():
+    r = deployment([container(sc={"sysctls": {"kernel.shm_rmid_forced": "1"}})])
+    findings = check_unsafe_sysctls(r, "Deployment/test")
+    assert len(findings) == 1
+    assert "kernel.shm_rmid_forced" in findings[0]["title"]
+
+
+def test_safe_sysctl_no_finding():
+    r = deployment([container(sc={"sysctls": {"net.core.somaxconn": "1024"}})])
+    # somaxconn is net.* so it IS unsafe
+    findings = check_unsafe_sysctls(r, "Deployment/test")
+    assert len(findings) == 1
+
+
+def test_no_sysctls_no_finding():
+    r = deployment([container(sc={})])
+    findings = check_unsafe_sysctls(r, "Deployment/test")
+    assert findings == []
+
+
+def test_custom_safe_sysctl_no_finding():
+    # Custom sysctl with safe prefix (not net/kernel/fs/vm)
+    r = deployment([container(sc={"sysctls": {"my.custom.setting": "42"}})])
+    findings = check_unsafe_sysctls(r, "Deployment/test")
+    assert findings == []
+
+
+# ── check_fs_group ────────────────────────────────────────────────────────────
+
+def test_missing_fs_group_with_volumes():
+    r = deployment(volumes=[{"name": "data", "emptyDir": {}}])
+    findings = check_fs_group(r, "Deployment/test")
+    assert len(findings) == 1
+    assert findings[0]["check_id"] == "K8S-027"
+    assert findings[0]["severity"] == "LOW"
+
+
+def test_fs_group_set_no_finding():
+    r = deployment(
+        spec_overrides={"securityContext": {"fsGroup": 1000}},
+        volumes=[{"name": "data", "emptyDir": {}}],
+    )
+    findings = check_fs_group(r, "Deployment/test")
+    assert findings == []
+
+
+def test_no_volumes_no_finding():
+    r = deployment()
+    findings = check_fs_group(r, "Deployment/test")
+    assert findings == []
+
+
+def test_non_workload_kind_no_finding():
+    resource = {
+        "kind": "Service",
+        "metadata": {"name": "test"},
+        "spec": {"type": "ClusterIP"},
+    }
+    findings = check_fs_group(resource, "Service/test")
+    assert findings == []
